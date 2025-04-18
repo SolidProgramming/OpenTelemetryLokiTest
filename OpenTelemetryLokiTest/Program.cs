@@ -13,6 +13,14 @@ builder.Logging.AddOpenTelemetry(_ =>
 
 builder.Services.AddHttpClient();
 
+builder.Logging.AddOpenTelemetry(options =>
+{
+    options
+        .SetResourceBuilder(ResourceBuilder.CreateDefault()
+        .AddService(nameof(SomeService)))
+        .AddConsoleExporter();
+});
+
 builder.Services.AddOpenTelemetry()
      .ConfigureResource(resource => resource.AddService(nameof(SomeService)))
     .WithTracing(tracing =>
@@ -34,33 +42,11 @@ builder.Services.AddSingleton<ISomeService, SomeService>();
 
 WebApplication app = builder.Build();
 
-// Configure the HTTP request pipeline.
-
-string[] summaries = new[]
+app.MapHealthChecks("/health");
+app.MapGet("/logsomething", (ISomeService someService) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", (ISomeService someService) =>
-{
-    WeatherForecast[] forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-
     someService.LogSomething();
-    return forecast;
 });
 
-app.MapHealthChecks("/health");
 
 app.Run();
-
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)( TemperatureC / 0.5556 );
-}
